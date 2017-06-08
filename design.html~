@@ -1,0 +1,289 @@
+<html>
+	<head>
+		<title>Flower Design</title>
+		<script type = "text/javascript" src="scripts/Tree/Root.js"></script>
+		<script type = "text/javascript" src="scripts/Tree/petal.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/FlowerHead.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/Petal.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/Stem.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/Flowerflower.js"></script>
+		<script type = "text/javascript" src="scripts/jquery-1.4.2.min.js"></script>
+		<script type = "text/javascript" src="scripts/jquery.timers-1.2.js"></script>
+		<script type = "text/javascript" src="scripts/raphael-min.js"></script>
+		
+		<script type = "text/javascript">
+		
+			var flower_list; //a grid of arraylists
+			var index;
+			var flower_sprite_list;
+			var paper;
+			var root_list;
+			var root_sprite_list;
+			var speed = 1;
+			var branch_list;
+			var branch_sprite_list;
+			var petal_list;
+			var petal_sprite_list;
+			var floating_list;
+			var floating_sprite_list;
+			var set_to_tick = 0;
+			var wind = 1;
+			var wind_direction = -1;
+			var wind_velocity_sprite;
+			
+	
+			//alert(flower.test());
+			
+			window.onload = function(){
+				paper = new Raphael(document.getElementById('sim'),1000,500);
+				
+				var ground = paper.rect(0,0,1000,500);
+				ground.attr("fill", "#000000");
+			
+				flower_list = new Array();
+				flower_sprite_list = new Array();
+				root_list = new Array();
+				root_sprite_list = new Array();
+			    branch_list = new Array();
+				branch_sprite_list = new Array();
+				petal_list = new Array();
+				petal_sprite_list = new Array();
+				floating_list = new Array();
+				floating_sprite_list = new Array();
+
+				wind_velocity_sprite = paper.text(50,50, "Wind Velocity: " + Math.round(wind));
+				makeflowers();
+				index = Math.round((Math.random() * (flower_list[0].length - 1)));
+				if(index < 0 || index >= flower_list[0].length){
+					index = 0;
+				}
+	    	    startTimer();
+	    	   // startFloatTimer();
+	    	    
+		    } //end on load
+		    
+		    //make several flowers, which will sprout one at a time
+		    function makeflowers(){
+	    	  //subsequent flowers
+		  //ten rows of 20 flowers
+		  scale = 0.8;
+		  for(var i = 0; i < 17/(1.0 * scale); i++){
+		  	//make the new row
+			flower_list[i] = new Array();
+		  	for(var j = 0; j < 34/(1.0 * scale); j++){
+
+				 position = (j) * 22 * scale ;
+				 red = 255 -  i * 15 * scale ;
+				 green = j * 3;
+				 blue = 255 - red * scale;
+				// red = Math.random() * 255;
+				// green = Math.random() * 255;
+				// blue = Math.random() * 255;
+	    	 	 flower = new FlowerHead(position, 10 + i * 22 * scale,1000,500,null, scale,red,green,blue);
+		  	 	 flower_list[i].push(flower);
+			 	// flower_sprite_list.push(paper.path(flower.path));
+			 	flower_sprite_list.push(paper.circle(flower.x, flower.y, flower.radius * 0.95));
+			 	 flower_sprite_list[flower_sprite_list.length - 1].attr({scale: flower.scale, fill: flower.color, stroke: flower.stroke});
+	    	  
+				
+				
+			}//end columns
+
+		  }//end rows
+		
+
+	   
+	  	  };
+		    
+
+			function startTimer(){
+				$(document).everyTime(speed,function(i) {
+					if(flower_list.length != 0){
+	            		tick();
+	            		//check_for_dead();
+	            		check_for_stasis();
+	            	}else{
+	            	
+	            	}
+					
+					}, 0);
+			};
+			
+			//floating objects don't move as fast
+			function startFloatTimer(){
+				$(document).everyTime(speed*4 ,function(i) {
+				//don't bother rendering effects if the system is still growing
+						if(flower_list.length == 0){
+							float_tick();
+						}
+					}, 0);
+			};
+			
+			
+			function float_tick(){
+				//set the wind direction
+				if(Math.random() * 100 < 200){
+					wind_direction = wind_direction * -1;
+				}
+				//set the wind amount
+				wind = wind + wind_direction * (Math.random() * 5);
+				wind_velocity_sprite.attr('text', "Wind Velocity: " + Math.round(wind));
+				var number_tick = floating_list.length;
+				//can't tick on ALL of them or would chug
+				//so look at 50 at a time
+				if(number_tick > 150){
+					number_tick = 150;
+				}
+				    if((set_to_tick + 1) * 100 > floating_list.length){
+						set_to_tick = 0;
+					}else{
+						set_to_tick = set_to_tick + 1;
+					}
+				for(var i = 0; i < number_tick; i++){
+					//increment the set i'm looking at, or reset
+
+					var index = set_to_tick * 100 + i;
+					if(floating_list[index]){
+						floating_list[index].tick(floating_sprite_list[index], wind);
+						//if the petal is on the ground, stop floating
+						if(floating_list[index].on_ground){
+							floating_sprite_list.splice(index,1);
+							floating_list.splice(index,1);
+						}
+					}
+				}//end floating for loop
+			};
+			
+			//tick all flowers, roots, etc.
+			function tick(){
+				if(flower_list.length != 0){
+					if(index < 0 || index >= flower_list[0].length ){
+							index = 0;
+					}
+					flower_list[0][index].tick(branch_list, branch_sprite_list, petal_list, petal_sprite_list);
+				}
+				
+				for(var i in petal_list){
+					//petal_list[i].tick(petal_sprite_list[i], wind);
+				}//end petal for loop
+				
+				for(var i in branch_list){
+					branch_list[i].tick(branch_list, branch_sprite_list, petal_list, petal_sprite_list, i);
+				}//end branch for loop
+				
+				for(var i in root_list){
+					root_list[i].tick(root_list, root_sprite_list, i);
+				}//end root for loop
+				
+		}//end tick
+		
+			//stops objects in stasis from ticking
+			//by removing them from their respective lists
+			//but does NOT stop rendering them.
+			function check_for_stasis(){
+				for(var i in flower_list[0]){
+					if(flower_list[0][i].is_stasis){
+						//flower_sprite_list.splice(i,1);
+						flower_list[0].splice(i,1);
+						if(flower_list[0].length == 0){ //if empty, erase
+							flower_list.splice(0,1);
+
+						}
+						if(flower_list.length > 0){
+							index = Math.round((Math.random() * (flower_list[0].length - 1)));
+						}
+					}//end if stasis
+				}//end all flowers
+				
+				for(var i in root_list){
+					if(root_list[i].is_stasis){
+						root_sprite_list.splice(i,1);
+						root_list.splice(i,1);
+					}//end if stasis
+				}//end all roots
+				
+				for(var i in branch_list){
+					if(branch_list[i].is_stasis){
+						branch_sprite_list.splice(i,1);
+						branch_list.splice(i,1);
+					}//end if stasis
+				}//end all branches
+				
+				for(var i in petal_list){
+					if(petal_list[i].is_stasis || petal_list[i].is_floating){
+						floating_list.push(petal_list[i]);
+						floating_sprite_list.push(petal_sprite_list[i]);
+						petal_sprite_list.splice(i,1);
+						petal_list.splice(i,1);
+					}//end if stasis
+
+				}//end all leaves
+			}
+			
+			//goes through each type of object
+			//and removes everything that is "dead"
+			function check_for_dead(){
+			
+				for(var i in flower_list){
+					if(flower_list[i].is_dead){
+						//flower_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						flower_sprite_list[i].hide();
+						flower_list.splice(i,1);
+						flower_sprite_list.splice(i,1);
+						
+						//now, make a replacement flower
+		      			var flower = new flower(500,410,1000,500);
+		  	  			flower_list.push(flower);
+			  			flower_sprite_list.push(paper.path(new flower(500,410,1000,500).path));
+			  			flower_sprite_list[flower_sprite_list.length - 1].attr({fill: flower.color, stroke: flower.stroke});
+	    	   
+					}//end if dead
+				}//end for flowers
+				
+				for(var i in root_list){
+					if(root_list[i].is_dead){
+						//root_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						root_sprite_list[i].hide();
+						root_list.splice(i,1);
+						root_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for roots
+				
+				for(var i in branch_list){
+					if(branch_list[i].is_dead){
+						//branch_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						branch_sprite_list[i].hide();
+						branch_list.splice(i,1);
+						branch_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for branches
+				
+				for(var i in petal_list){
+					if(petal_list[i].is_dead){
+						//petal_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						petal_sprite_list[i].hide();
+						petal_list.splice(i,1);
+						petal_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for leaves
+				
+				for(var i in floating_list){
+					if(floating_list[i].is_dead){
+						//floating_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						floating_sprite_list[i].hide();
+						floating_list.splice(i,1);
+						floating_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for floatingers
+			}//end check for dead
+		</script>
+	</head>
+
+	<body>
+		<h1>Flower Design</h1>
+		
+		<div id = "sim">
+
+		</div>
+	</body>
+</html>
