@@ -1,0 +1,314 @@
+<html>
+	<head>
+		<title>Flower Garden Simulation</title>
+		<script type = "text/javascript" src="scripts/Tree/Root.js"></script>
+		<script type = "text/javascript" src="scripts/Tree/Leaf.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/FlowerHead.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/Petal.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/Stem.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/FlowerSeed.js"></script>
+	    <script type = "text/javascript" src="scripts/Flowers/RoseFlowerSeed.js"></script>
+	    <script type = "text/javascript" src="scripts/Flowers/InvertFlowerSeed.js"></script>
+	    <script type = "text/javascript" src="scripts/Flowers/WreatheFlowerSeed.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/RedFlowerSeed.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/GreyFlowerSeed.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/PurpleFlowerSeed.js"></script>
+		<script type = "text/javascript" src="scripts/Flowers/BlueFlowerSeed.js"></script>
+		<script type = "text/javascript" src="scripts/jquery-1.4.2.min.js"></script>
+		<script type = "text/javascript" src="scripts/jquery.timers-1.2.js"></script>
+		<script type = "text/javascript" src="scripts/raphael-min.js"></script>
+		
+		<script type = "text/javascript">
+		
+			var seed_list; //a grid of arraylists
+			var index;
+			var seed_sprite_list;
+			var paper;
+			var root_list;
+			var root_sprite_list;
+			var speed = 100;
+			var branch_list;
+			var branch_sprite_list;
+			var leaf_list;
+			var leaf_sprite_list;
+			var floating_list;
+			var floating_sprite_list;
+			var set_to_tick = 0;
+			var wind = 1;
+			var wind_direction = -1;
+			var wind_velocity_sprite;
+			
+	
+			//alert(seed.test());
+			
+			window.onload = function(){
+				paper = new Raphael(document.getElementById('sim'),1000,500);
+				
+				var ground = paper.rect(0,0,1000,500);
+				ground.attr("fill", "#996600");
+			
+				var sky = paper.rect(0,0,1000,400);
+				sky.attr("fill", "45-#fff-#659ec7");
+			
+				seed_list = new Array();
+				seed_sprite_list = new Array();
+				root_list = new Array();
+				root_sprite_list = new Array();
+			    branch_list = new Array();
+				branch_sprite_list = new Array();
+				leaf_list = new Array();
+				leaf_sprite_list = new Array();
+				floating_list = new Array();
+				floating_sprite_list = new Array();
+
+				wind_velocity_sprite = paper.text(50,50, "Wind Velocity: " + Math.round(wind));
+				makeSeeds();
+				index = Math.round((Math.random() * (seed_list[0].length - 1)));
+				if(index < 0 || index >= seed_list[0].length){
+					index = 0;
+				}
+	    	    startTimer();
+	    	   // startFloatTimer();
+	    	    
+		    } //end on load
+		    
+		    //make several seeds, which will sprout one at a time
+		    function makeSeeds(){
+	    	  //subsequent seeds
+		  //ten rows of 20 flowers
+		  
+		  for(var i = 0; i < 5; i++){
+		  	//make the new row
+			seed_list[i] = new Array();
+		  	for(var j = 0; j < 20; j++){
+		  		 color = Math.random() * 120;
+		  		 r = color + Math.random() * 120;
+		  		 b = color + Math.random() * 120;
+		  		 g = color;
+				 position = (j) * 49 + Math.random()*20+ 10;
+				 if(i % 5 ==  1){
+	    	 		 seed = new RoseFlowerSeed(position, 400 + i * 20,1000,500,1, r,g,b);
+	    	 	 }
+	    	 	 if( i % 5 == 0){
+	    	 	 	//will be random
+	    	 	 	seed = new FlowerSeed(position, 400 + i * 20,1000,500,1,r,g,b);
+	    	 	 	
+	    	 	 }
+	    	 	 
+	    	 	 if( i % 5 == 3){
+	    	 	 	seed = new WreatheFlowerSeed(position, 400 + i * 20,1000,500,1, r,g,b);
+	    	 	 	
+	    	 	 }
+	    	 	 
+	    	 	 if( i % 5 == 2){
+	    	 	 	seed = new InvertFlowerSeed(position, 400 + i * 20,1000,500,1,r,g,b);
+	    	 	 	
+	    	 	 }
+	    	 	 
+	    	 	 if(i % 5 == 4){
+	    	 	 	seed = new GreyFlowerSeed(position, 400 + i * 20,1000,500,1);
+	    	 	 	
+	    	 	 }
+
+		  	 	 seed_list[i].push(seed);
+			 	 seed_sprite_list.push(paper.path(seed.path));
+			 	 seed_sprite_list[seed_sprite_list.length - 1].attr({fill: seed.color, stroke: seed.stroke});
+	    	  
+				
+				
+			}//end columns
+
+		  }//end rows
+		
+
+	   
+	  	  };
+		    
+
+			function startTimer(){
+				$(document).everyTime(speed,function(i) {
+	            	tick();
+	            	check_for_dead();
+	            	check_for_stasis();
+					
+					}, 0);
+			};
+			
+			//floating objects don't move as fast
+			function startFloatTimer(){
+				$(document).everyTime(speed*4 ,function(i) {
+				//don't bother rendering effects if the system is still growing
+						if(seed_list.length == 0){
+							float_tick();
+						}
+					}, 0);
+			};
+			
+			
+			function float_tick(){
+				//set the wind direction
+				if(Math.random() * 100 < 200){
+					wind_direction = wind_direction * -1;
+				}
+				//set the wind amount
+				wind = wind + wind_direction * (Math.random() * 5);
+				wind_velocity_sprite.attr('text', "Wind Velocity: " + Math.round(wind));
+				var number_tick = floating_list.length;
+				//can't tick on ALL of them or would chug
+				//so look at 50 at a time
+				if(number_tick > 150){
+					number_tick = 150;
+				}
+				    if((set_to_tick + 1) * 100 > floating_list.length){
+						set_to_tick = 0;
+					}else{
+						set_to_tick = set_to_tick + 1;
+					}
+				for(var i = 0; i < number_tick; i++){
+					//increment the set i'm looking at, or reset
+
+					var index = set_to_tick * 100 + i;
+					if(floating_list[index]){
+						floating_list[index].tick(floating_sprite_list[index], wind);
+						//if the leaf is on the ground, stop floating
+						if(floating_list[index].on_ground){
+							floating_sprite_list.splice(index,1);
+							floating_list.splice(index,1);
+						}
+					}
+				}//end floating for loop
+			};
+			
+			//tick all seeds, roots, etc.
+			function tick(){
+				if(seed_list.length != 0){
+					if(index < 0 || index >= seed_list[0].length ){
+							index = 0;
+					}
+					seed_list[0][index].tick(root_list, root_sprite_list, branch_list, branch_sprite_list);
+				}
+				
+				for(var i in leaf_list){
+					//leaf_list[i].tick(leaf_sprite_list[i], wind);
+				}//end leaf for loop
+				
+				for(var i in branch_list){
+					branch_list[i].tick(branch_list, branch_sprite_list, leaf_list, leaf_sprite_list, i);
+				}//end branch for loop
+				
+				for(var i in root_list){
+					root_list[i].tick(root_list, root_sprite_list, i);
+				}//end root for loop
+				
+		}//end tick
+		
+			//stops objects in stasis from ticking
+			//by removing them from their respective lists
+			//but does NOT stop rendering them.
+			function check_for_stasis(){
+				for(var i in seed_list[0]){
+					if(seed_list[0][i].is_stasis){
+						//seed_sprite_list.splice(i,1);
+						seed_list[0].splice(i,1);
+						if(seed_list[0].length == 0){ //if empty, erase
+							seed_list.splice(0,1);
+
+						}
+				if(seed_list.length > 0){
+							index = Math.round((Math.random() * (seed_list[0].length - 1)));
+				}
+					}//end if stasis
+				}//end all seeds
+				
+				for(var i in root_list){
+					if(root_list[i].is_stasis){
+						root_sprite_list.splice(i,1);
+						root_list.splice(i,1);
+					}//end if stasis
+				}//end all roots
+				
+				for(var i in branch_list){
+					if(branch_list[i].is_stasis){
+						branch_sprite_list.splice(i,1);
+						branch_list.splice(i,1);
+					}//end if stasis
+				}//end all branches
+				
+				for(var i in leaf_list){
+					if(leaf_list[i].is_stasis || leaf_list[i].is_floating){
+						floating_list.push(leaf_list[i]);
+						floating_sprite_list.push(leaf_sprite_list[i]);
+						leaf_sprite_list.splice(i,1);
+						leaf_list.splice(i,1);
+					}//end if stasis
+
+				}//end all leaves
+			}
+			
+			//goes through each type of object
+			//and removes everything that is "dead"
+			function check_for_dead(){
+			
+				for(var i in seed_list){
+					if(seed_list[i].is_dead){
+						//seed_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						seed_sprite_list[i].hide();
+						seed_list.splice(i,1);
+						seed_sprite_list.splice(i,1);
+						
+						//now, make a replacement seed
+		      			var seed = new Seed(500,410,1000,500);
+		  	  			seed_list.push(seed);
+			  			seed_sprite_list.push(paper.path(new Seed(500,410,1000,500).path));
+			  			seed_sprite_list[seed_sprite_list.length - 1].attr({fill: seed.color, stroke: seed.stroke});
+	    	   
+					}//end if dead
+				}//end for seeds
+				
+				for(var i in root_list){
+					if(root_list[i].is_dead){
+						//root_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						root_sprite_list[i].hide();
+						root_list.splice(i,1);
+						root_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for roots
+				
+				for(var i in branch_list){
+					if(branch_list[i].is_dead){
+						//branch_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						branch_sprite_list[i].hide();
+						branch_list.splice(i,1);
+						branch_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for branches
+				
+				for(var i in leaf_list){
+					if(leaf_list[i].is_dead){
+						//leaf_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						leaf_sprite_list[i].hide();
+						leaf_list.splice(i,1);
+						leaf_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for leaves
+				
+				for(var i in floating_list){
+					if(floating_list[i].is_dead){
+						//floating_sprite_list[i].animate({opacity: 0, 'stroke-opacity': 0, 'fill-opacity': 0}, 1000);
+						floating_sprite_list[i].hide();
+						floating_list.splice(i,1);
+						floating_sprite_list.splice(i,1);						
+					}//end if dead
+				}//end for floatingers
+			}//end check for dead
+		</script>
+	</head>
+
+	<body>
+		<h1>Flower Garden Simulation</h1>
+		
+		<div id = "sim">
+
+		</div>
+	</body>
+</html>
